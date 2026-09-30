@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Orb</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#07060d; --fg:#f2eefb; --muted:#8b84a8;
+    --panel:rgba(255,255,255,.04); --line:rgba(255,255,255,.09);
+    --hue:275;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:
+      radial-gradient(1000px 700px at 50% -10%, hsl(var(--hue) 70% 16% / .85), transparent 65%),
+      var(--bg);
+    color:var(--fg);
+    font-family:'Space Grotesk',system-ui,sans-serif;
+    display:flex; flex-direction:column; align-items:center;
+    padding:32px 16px 48px; gap:26px;
+    transition:background 700ms ease;
+    overflow-x:hidden;
+  }
+  h1{
+    font-size:13px; letter-spacing:.42em; text-transform:uppercase;
+    color:var(--muted); font-weight:600; margin:0; text-align:center;
+  }
+  .stage{display:flex;flex-direction:column;align-items:center;gap:26px;width:100%;max-width:560px}
+
+  .orb{
+    position:relative; width:min(72vw,300px); aspect-ratio:1; border-radius:50%;
+    cursor:pointer; border:none; padding:0; flex:none;
+    background:
+      radial-gradient(circle at 32% 26%, rgba(255,255,255,.55), rgba(255,255,255,0) 38%),
+      radial-gradient(circle at 68% 76%, hsl(var(--hue) 95% 62% / .55), transparent 55%),
+      radial-gradient(circle at 50% 50%, hsl(var(--hue) 60% 22%), hsl(var(--hue) 70% 7%) 72%);
+    box-shadow:
+      0 0 90px hsl(var(--hue) 90% 55% / .35),
+      inset 0 0 60px hsl(var(--hue) 90% 60% / .22),
+      inset 0 -18px 40px rgba(0,0,0,.6);
+    transition:background 700ms ease, box-shadow 700ms ease, transform 180ms ease;
+    animation:float 6s ease-in-out infinite;
+  }
+  .orb:hover{transform:scale(1.03)}
+  .orb:active{transform:scale(.97)}
+  .orb::after{
+    content:""; position:absolute; inset:14%; border-radius:50%;
+    background:radial-gradient(circle at 50% 55%, hsl(var(--hue) 100% 70% / .30), transparent 68%);
+    filter:blur(6px); transition:background 700ms ease;
+  }
+  .orb.swirl{animation:swirl .8s cubic-bezier(.36,.07,.19,.97)}
+  @keyframes float{0%,100%{translate:0 0}50%{translate:0 -10px}}
+  @keyframes swirl{
+    0%{transform:scale(1) rotate(0)}
+    25%{transform:scale(.93) rotate(-7deg)}
+    55%{transform:scale(1.06) rotate(6deg)}
+    80%{transform:scale(.98) rotate(-2deg)}
+    100%{transform:scale(1) rotate(0)}
+  }
+
+  .answer{
+    min-height:4.6em; display:flex; align-items:center; justify-content:center;
+    text-align:center; font-size:clamp(20px,5.2vw,30px); font-weight:700;
+    line-height:1.25; letter-spacing:-.01em; padding:0 6px;
+    opacity:0; transform:translateY(8px); transition:opacity .35s ease, transform .35s ease;
+  }
+  .answer.show{opacity:1; transform:none}
+  .hint{font-size:13px;color:var(--muted);letter-spacing:.06em}
+
+  .log{width:100%;max-width:560px;border-top:1px solid var(--line);padding-top:18px}
+  .log-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+  .log-head span{font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:var(--muted)}
+  .log-head button{
+    background:var(--panel);border:1px solid var(--line);color:var(--muted);
+    font:inherit;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+    padding:6px 12px;border-radius:999px;cursor:pointer
+  }
+  .log-head button:hover{color:var(--fg);border-color:rgba(255,255,255,.25)}
+  ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;
+     max-height:300px;overflow-y:auto}
+  li{
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:10px 14px;font-size:14px;line-height:1.45;
+    display:flex;gap:12px;align-items:baseline
+  }
+  li time{color:var(--muted);font-size:11px;flex:none;font-variant-numeric:tabular-nums}
+  .empty{color:var(--muted);font-size:13px;padding:4px 2px}
+  @media (prefers-reduced-motion:reduce){
+    .orb,.orb.swirl{animation:none}
+    *{transition-duration:.01ms !important}
+  }
+</style>
+</head>
+<body>
+  <h1>Consult the orb</h1>
+  <div class="stage">
+    <button class="orb" id="orb" aria-label="Consult the orb"></button>
+    <div class="answer" id="answer" role="status" aria-live="polite"></div>
+    <div class="hint" id="hint">tap it</div>
+  </div>
+
+  <section class="log">
+    <div class="log-head">
+      <span>The record</span>
+      <button id="clear" type="button">clear</button>
+    </div>
+    <ul id="list"></ul>
+    <div class="empty" id="empty">nothing consulted yet</div>
+  </section>
+
+<script>
+const LINES = [
+  "yeah it's giving affirmative, no cap fr fr",
+  "sigma grindset says lock in and send it",
+  "skibidi outcome imminent, brace",
+  "the rizz is mathing, proceed",
+  "absolutely gyatt-tier greenlight",
+  "bet. on god. periodt.",
+  "aura +400, do the thing",
+  "certified ohio W incoming",
+  "chat, he's cooking. let him cook",
+  "the vibes have been audited and they pass",
+  "based and destined-pilled",
+  "yessir the fanum tax gods approve",
+  "green candle behaviour, ape in",
+  "it's giving main character, go",
+  "sheeeesh the universe said run it back",
+  "W rizz, the answer is yes ong",
+  "manifested. it is already so. slay",
+  "the algorithm is feeding you this. accept",
+  "nah fam that's an L in the making",
+  "negative aura, -9000, abort mission",
+  "chat this is NOT it. stop cooking",
+  "hard nope, that's giving unemployed energy",
+  "the ick is immeasurable. do not",
+  "ratio + touch grass + no",
+  "red flag parade, marching band and all",
+  "delulu is not the solulu here bestie",
+  "that's a skill issue waiting to happen",
+  "ohio ahh idea, respectfully no",
+  "the ancestors said absolutely not gng",
+  "flopped before it started, cooked",
+  "mid outcome guaranteed, pass",
+  "sybau and reconsider your whole arc",
+  "clanker logic. rejected",
+  "L + didn't ask + the orb says no",
+  "no because why would you. genuinely",
+  "the fanum tax will take everything. don't",
+  "unclear, the vibes are buffering",
+  "50/50 like a gacha pull, pray",
+  "chat is divided. so is the orb",
+  "maybe? the lore hasn't dropped yet",
+  "sus. not no, not yes, just sus",
+  "the orb is in its flop era, ask later",
+  "it's giving quantum superposition bestie",
+  "depends how much aura you're willing to burn",
+  "the simulation hasn't rendered that far",
+  "ask again when mercury stops being delulu",
+  "unc the signal is weak rn, try later",
+  "could go either way, very brat of it",
+  "the prophecy is mid and unclear",
+  "loading... loading... nah still loading",
+  "hmm. hmmmm. hmmmmmmm. unclear",
+  "the orb is touching grass, ask later",
+  "outcome locked behind a paywall, sorry",
+  "the tea hasn't been spilled yet",
+  "coin flip energy, genuinely",
+  "the orb refuses to be perceived on this one",
+  "it's complicated, like your situationship",
+  "vibes inconclusive, aura reading pending",
+  "not gonna lie, even the orb is confused",
+  "buffering at 3%, come back never"
+];
+
+const orb = document.getElementById('orb');
+const answerEl = document.getElementById('answer');
+const hint = document.getElementById('hint');
+const list = document.getElementById('list');
+const empty = document.getElementById('empty');
+const clearBtn = document.getElementById('clear');
+const KEY = 'orb-history-v1';
+
+let history = [];
+try { history = JSON.parse(localStorage.getItem(KEY) || '[]'); } catch(e) { history = []; }
+if (!Array.isArray(history)) history = [];
+
+let lastIdx = -1;
+function pick(){
+  let i;
+  do { i = Math.floor(Math.random() * LINES.length); } while (LINES.length > 1 && i === lastIdx);
+  lastIdx = i;
+  return LINES[i];
+}
+
+function save(){
+  try { localStorage.setItem(KEY, JSON.stringify(history.slice(0,60))); } catch(e){}
+}
+
+function render(){
+  list.innerHTML = '';
+  empty.style.display = history.length ? 'none' : 'block';
+  for (const item of history){
+    const li = document.createElement('li');
+    const t = document.createElement('time');
+    t.textContent = item.t;
+    const span = document.createElement('span');
+    span.textContent = item.a;
+    li.append(t, span);
+    list.appendChild(li);
+  }
+}
+
+let busy = false;
+function consult(){
+  if (busy) return;
+  busy = true;
+  hint.textContent = '';
+  answerEl.classList.remove('show');
+  document.documentElement.style.setProperty('--hue', Math.floor(Math.random()*360));
+  orb.classList.remove('swirl');
+  void orb.offsetWidth;
+  orb.classList.add('swirl');
+
+  setTimeout(() => {
+    const a = pick();
+    answerEl.textContent = a;
+    answerEl.classList.add('show');
+    const now = new Date();
+    history.unshift({ a, t: now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) });
+    history = history.slice(0,60);
+    save();
+    render();
+    busy = false;
+  }, 800);
+}
+
+orb.addEventListener('click', consult);
+clearBtn.addEventListener('click', () => { history = []; save(); render(); });
+render();
+</script>
+</body>
+</html>
